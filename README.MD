@@ -7,7 +7,7 @@
 
 | No | Topik |
 |----|-------|
-| 1 | [Data Mining](#data-mining) |
+| 1 | [Skrining Awal](#skrining-awal) |
 | 2 | [Pre-Processing Data](#metodologi) |
 | 3 | [Analisa Data](#hasil-dan-pembahasan) |
 | 4 | [Kesimpulan](#kesimpulan) |
