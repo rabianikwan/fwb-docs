@@ -74,12 +74,11 @@ def retstruktur_kunjungan_dan_filter_umur(data_input):
     for p_id, p_data in pasien_terkelompok.items():
         # FITUR 1 : MEMPERKIRAKAN DIAGNOSA UTAMA BERDASARKAN FREKUENSI DIAGNOSA KUNJUNGAN
         diagnosa_kunjungan = [kunjungan.get("erm", {}).get("diagnosa", "").lower() for kunjungan in p_data["kunjungan"]]
-        p_data["diagnosa"] = diagnosa
+
         
         
         # FITUR 2 : MENGKATEGORIKAN LOKASI ANATOMI BERDASARKAN DIAGNOSA UTAMA
         filter = [
-            "hip",
             "femur", 
             "femoral",
             "tibia", 
@@ -100,11 +99,12 @@ def retstruktur_kunjungan_dan_filter_umur(data_input):
             weighted.extend([d] * (WEIGHT if is_filtered else 1))
 
         diagnosa = Counter(weighted).most_common(1)[0][0]
+        p_data["diagnosa"] = diagnosa
                
         if not any(re.search(rf"\b{bone}\b", diagnosa, re.IGNORECASE) for bone in filter):
             continue
         
-        if "femur" in diagnosa or "hip" in diagnosa:
+        if "femur" in diagnosa:
             p_data["lokasi_anatomi"] = "Femur"
         elif "tibia" in diagnosa:
             p_data["lokasi_anatomi"] = "Tibia"
@@ -113,7 +113,7 @@ def retstruktur_kunjungan_dan_filter_umur(data_input):
         elif "talus" in diagnosa or "cuneiformis" in diagnosa or "kuboid" in diagnosa or "metatarsal" in diagnosa or "navicular" in diagnosa or "calcaneus" in diagnosa:
             p_data["lokasi_anatomi"] = "Ankle"
         else:
-            continue
+            p_data["lokasi_anatomi"] = "Unknown"
         
         
         # FITUR 3 : MENGKATEGORIKAN PROTOKOL BEBAN TERAKHIR BERDASARKAN TINDAKAN KUNJUNGAN
