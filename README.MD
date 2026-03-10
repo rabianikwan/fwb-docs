@@ -187,7 +187,7 @@ Tahap 2 memproses output dari Tahap 1 (`skrining/1.json`) untuk mengelompokkan r
 | Kriteria | Nilai |
 |---|---|
 | Batas usia minimum | ≥ 18 tahun (`inklusi_umur = 18`) |
-| Lokasi anatomis | Femur, Tibia, atau Ankle |
+| Lokasi anatomis | Femur, Tibia, atau Ankle & Foot|
 | Diagnosa | Mengandung kata kunci lokasi anatomis fraktur ekstremitas bawah |
 
 ---
