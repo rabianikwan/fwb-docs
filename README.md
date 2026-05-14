@@ -1,0 +1,407 @@
+# *Survival Analysis* Waktu Pencapaian *Full Weight-Bearing* (FWB) Terhadap Pasien Fraktur Ekstremitas Bawah
+
+> **Lokasi Data** — RSUD I.A. Moeis Samarinda  
+> **Desain** — *Retrospective Cohort Study*
+
+> **Metode Utama** — *Survival Analysis*
+---
+
+## Daftar Isi
+
+1. [Deskripsi Project](#1-deskripsi-proyek)  
+2. [Struktur Repository](#2-struktur-repository)  
+3. [Variabel Penelitian](#3-variabel-penelitian)  
+4. [Alur Analisis](#4-alur-analisis)  
+5. [Dependensi R](#5-dependensi-r)  
+6. [Cara Menjalankan](#6-cara-menjalankan)  
+7. [Output yang Dihasilkan](#7-output-yang-dihasilkan)  
+8. [Referensi Metodologis](#8-referensi-metodologis)  
+
+---
+
+## 1. Deskripsi Project
+
+Penelitian ini menganalisis **waktu pencapaian *full weight-bearing*** (FWB) sebagai *event of interest* pada pasien dewasa penderita fraktur ekstremitas bawah. Analisis survival digunakan karena sebagian pasien belum mencapai FWB pada akhir periode observasi (data tersensor). Model Cox Proportional Hazards dibangun untuk mengestimasi pengaruh simultan empat prediktor klinis terhadap kecepatan pemulihan FWB, dilengkapi nomogram sebagai alat prediksi probabilistik individual.
+
+**Pertanyaan Penelitian:**  
+Apakah usia, mekanisme trauma, lokasi fraktur, dan tipe fiksasi berpengaruh terhadap waktu pencapaian FWB pada pasien fraktur ekstremitas bawah di RSUD I.A. Moeis Samarinda?
+
+---
+
+## 2. Struktur Repository
+
+```
+.
+├── data.csv                    # Dataset mentah (variabel klinis pasien)
+├── Source.R                    # Skrip utama — seluruh pipeline analisis
+└── README.md                   # Dokumentasi proyek (file ini)
+```
+
+> **Catatan privasi:** `data.csv` tidak memuat identitas langsung pasien. ID pasien di-*hash* menggunakan SHA-256 pada tahap pra-pemrosesan sebelum masuk ke pipeline ini.
+
+---
+
+## 3. Variabel Penelitian
+
+| Peran | Variabel | Tipe | Kode/Kategori |
+|---|---|---|---|
+| **Dependen** | Waktu pencapaian FWB (`Time`) | Kontinu (minggu) | — |
+| **Dependen** | Status event (`Status`) | Biner | `1` = FWB tercapai, `0` = tersensor |
+| **Independen** | Usia | Kontinu (tahun) | — |
+| **Independen** | Mekanisme Trauma | Kategorik | `0` = Energi Rendah, `1` = Energi Tinggi |
+| **Independen** | Lokasi Fraktur | Kategorik (3 level) | `0` = Ankle & Foot, `1` = Tibia-Fibula, `2` = Femur |
+| **Independen** | Tipe Fiksasi | Kategorik | `0` = Fiksasi Konservatif, `1` = Fiksasi Internal/Eksternal |
+| **Deskriptif** | Jenis Kelamin | Kategorik | `0` = Laki-Laki, `1` = Perempuan |
+
+---
+
+## 4. Alur Analisis
+
+Pipeline analisis terbagi menjadi sepuluh tahap berurutan, semuanya terdapat dalam `analysis.R`.
+
+---
+
+### Tahap 1 — Pemuatan & Persiapan Awal Data
+
+```r
+data <- read.csv("data.csv")
+```
+
+- Variabel kategorik dikonversi ke `factor`.  
+- Satuan waktu (`Time`) ditetapkan dalam **minggu** menggunakan `Hmisc::units()`.  
+- Uji *Missing Completely at Random* (MCAR) dilakukan via `naniar::mcar_test()` sebelum imputasi.
+
+---
+
+### Tahap 2 — Imputasi Data Hilang (`missForest`)
+
+Missing data pada variabel `Mekanisme.Trauma` diimputasi menggunakan **missForest** (random forest non-parametrik).
+
+```r
+set.seed(12091993)
+copy_data <- missForest(
+  xmis        = copy_data,
+  ntree       = 500,
+  nodesize    = c(3, 1),
+  num.threads = parallel::detectCores() - 1L
+)
+```
+
+**Justifikasi metode:**
+- Data diasumsikan *Missing at Random* (MAR) berdasarkan p-value uji MCAR (p > 0.05 → gagal tolak H₀ MCAR, sehingga asumsi MAR valid sebagai kasus konservatif).  
+- Jenis Kelamin dieksklusi dari matriks imputasi karena tidak relevan sebagai prediktor imputasi `Mekanisme.Trauma`.  
+- Akurasi imputasi dievaluasi menggunakan **PFC** (*Proportion of Falsely Classified*) untuk variabel kategorik dan **NRMSE** untuk variabel kontinu (konversi dari MSE OOB).
+
+---
+
+### Tahap 3 — Evaluasi Missing Data (Tabel `gt`)
+
+Dua tabel evaluasi dihasilkan:
+
+1. **Tabel MCAR + OOB Error** — menampilkan statistik uji Little's MCAR, df, p-value, dan akurasi imputasi (PFC/NRMSE) dalam format `gt`.  
+2. **Tabel Hasil Imputasi** — menampilkan baris-baris yang diimputasi dengan highlight kolom `Mekanisme.Trauma`.
+
+---
+
+### Tahap 4 — Faktorisasi & Labelisasi Sentral
+
+Seluruh variabel kategorik diberi level dan label definitif di satu titik, menghindari inkonsistensi lintas tahap:
+
+```r
+data$Lokasi.Fraktur <- factor(data$Lokasi.Fraktur,
+  levels = c(0, 1, 2),
+  labels = c("Ankle&Foot", "Tibia-Fibula", "Femur"))
+```
+
+Objek `datadist` (`rms`) diinisialisasi di akhir tahap ini sehingga berlaku global untuk seluruh model `rms`.
+
+---
+
+### Tahap 5 — Karakteristik Pasien
+
+Dua tabel karakteristik dihasilkan menggunakan `gtsummary::tbl_summary()`:
+
+| Tabel | Variabel | Keterangan |
+|---|---|---|
+| Karakteristik Umum | Usia, Jenis Kelamin | Deskriptif demografi |
+| Karakteristik Khusus | Usia, Mekanisme Trauma, Tipe Fiksasi, Lokasi Fraktur dan Waktu Pencapaian FWB | Sesuai variabel penelitian |
+
+Statistik kontinu: mean \| median (IQR) \| [min–max]. Statistik kategorik: n (%).
+
+---
+
+### Tahap 6 — Pembentukan Objek Survival
+
+```r
+survival_object <- Surv(data$Time, data$Status)
+```
+
+Objek `Surv` menjadi respons untuk seluruh model KM dan Cox di tahap berikutnya.
+
+---
+
+### Tahap 7 — Analisis Kaplan-Meier per Variabel
+
+Untuk setiap variabel independen kategorik (Mekanisme Trauma, Lokasi Fraktur, Tipe Fiksasi):
+
+1. **`survfit()`** — estimasi KM dengan `conf.type = "log-log"` (lebih stabil untuk CI di ekor distribusi).  
+2. **`survdiff()`** — uji log-rank antar strata.  
+3. **`tbl_survfit()`** — tabel median survival dengan 95% CI.  
+4. **`ggsurvplot()`** — kurva KM kumulatif (`fun = "event"`), lengkap dengan risk table, median line, dan p-value log-rank.
+
+Kurva menggunakan `fun = "event"` (bukan default `fun = "surv"`) untuk menampilkan *cumulative incidence function* pencapaian FWB, lebih intuitif untuk luaran klinis positif.
+
+---
+
+### Tahap 8 — Analisis Survival Univariat (Overall)
+
+Kurva KM keseluruhan (`~ 1`) dihitung untuk mendapatkan **median survival global** (digunakan sebagai landmark time *t* pada kalibrasi, DCA, dan nomogram).
+
+Tabel ringkasan disusun menggunakan `tbl_stack()` yang menggabungkan:
+- Overall FWB
+- Per strata Mekanisme Trauma, Lokasi Fraktur, Tipe Fiksasi
+
+Kolom **Censoring** ditambahkan secara custom via `add_ncensor()` (N − Events).
+
+---
+
+### Tahap 9 — Cox Regression Multivariat
+
+```r
+cox_m1 <- coxph(
+  survival_object ~ Lokasi.Fraktur + Mekanisme.Trauma + Tipe.Fiksasi + Usia,
+  data = data
+)
+```
+
+**Uji asumsi Proportional Hazards:**
+
+```r
+uji_schoenfeld <- cox.zph(cox_m1)
+```
+
+- Schoenfeld residuals diperiksa per variabel dan secara global.  
+- p > 0.05 pada semua variabel → asumsi PH terpenuhi.  
+- Plot `ggcoxzph()` ditampilkan untuk inspeksi visual tren residual terhadap waktu.
+
+**Output:**
+- Tabel HR + 95% CI + p-value via `tbl_regression(exponentiate = TRUE)`.  
+- Forest plot via `ggforest()`.
+
+---
+
+### Tahap 10 — Model `rms`: Kalibrasi, Validasi, Diskriminasi, DCA, Nomogram
+
+Model dibangun ulang menggunakan `rms::cph()` untuk mengakses fungsi validasi dan kalibrasi internal `rms`.
+
+```r
+model <- cph(
+  survival_object ~ Lokasi.Fraktur + Mekanisme.Trauma + Tipe.Fiksasi + Usia,
+  data = data, x = TRUE, y = TRUE, surv = TRUE, time.inc = median
+)
+```
+
+#### 10a. Kalibrasi
+
+```r
+kalibrasi <- calibrate(model, method = "boot", B = 500, u = median, m = 15)
+```
+
+Plot kalibrasi menampilkan tiga kurva:
+- **Apparent** — sebelum koreksi bias
+- **Bias-corrected** — setelah bootstrap 500 iterasi
+- **Ideal** — garis diagonal sempurna
+
+Metrik ringkasan: Mean Absolute Error dan 90th Percentile Absolute Error.
+
+#### 10b. Validasi Internal (Diskriminasi Global)
+
+```r
+validasi <- validate(model, method = "boot", B = 500)
+```
+
+**C-statistic** diekstrak dari Somers' Dxy:
+
+```
+C = (Dxy + 1) / 2
+```
+
+Dilaporkan: C apparent, C bias-corrected, dan 95% bootstrap CI.
+
+#### 10c. Diskriminasi Berbasis Waktu (AUC-IPCW)
+
+```r
+tauc <- timeROC(T = data$Time, delta = data$Status,
+                marker = lp, cause = 1,
+                weighting = "marginal", times = median, iid = FALSE)
+```
+
+AUC-IPCW (*Inverse Probability of Censoring Weighting*) pada *t* = median survival memberikan estimasi diskriminasi yang mengakomodasi sensoring.
+
+#### 10d. Decision Curve Analysis (DCA)
+
+```r
+dca(survival_object ~ probabilitas_prediksi, data, time = median,
+    thresholds = seq(0, 0.5, by = 0.01))
+```
+
+DCA membandingkan net benefit model Cox terhadap strategi "treat all" dan "treat none" pada berbagai threshold keputusan klinis (0–50%).
+
+#### 10e. Nomogram
+
+```r
+nomogram_cox <- nomogram(model,
+  fun      = list(surv_median),
+  fun.at   = list(at.surv),
+  funlabel = c("Probabilitas Keterlambatan FWB pada t = [median] Minggu"),
+  lp       = FALSE)
+```
+
+Nomogram menerjemahkan skor prediktif model Cox menjadi **probabilitas individual** keterlambatan FWB pada waktu *t* = median survival. Digunakan sebagai alat bantu klinis (bukan diagnostik definitif).
+
+---
+
+## 5. Dependensi R
+
+```r
+# Instalasi semua dependensi
+install.packages(c(
+  "naniar",
+  "missForest",
+  "survival",
+  "survminer",
+  "rms",
+  "gtsummary",
+  "gt",
+  "tibble",
+  "Hmisc",
+  "dplyr",
+  "timeROC",
+  "dcurves",
+  "tidyr",
+  "scales"
+))
+```
+
+| Paket | Fungsi Utama dalam Pipeline |
+|---|---|
+| `naniar` | Uji MCAR (`mcar_test`) |
+| `missForest` | Imputasi random forest |
+| `survival` | Objek `Surv`, `coxph`, `survfit`, `survdiff` |
+| `survminer` | Visualisasi KM (`ggsurvplot`, `ggforest`, `ggcoxzph`) |
+| `rms` | `cph`, `calibrate`, `validate`, `nomogram`, `datadist` |
+| `gtsummary` | Tabel ringkasan klinis (`tbl_summary`, `tbl_regression`, `tbl_survfit`) |
+| `gt` | Tabel custom dengan formatting |
+| `Hmisc` | Label variabel, `Surv` support |
+| `timeROC` | AUC-IPCW berbasis waktu |
+| `dcurves` | Decision curve analysis |
+| `dplyr` / `tidyr` / `tibble` | Manipulasi data |
+
+**Versi R yang direkomendasikan:** R ≥ 4.3.0
+
+---
+
+## 6. Cara Menjalankan
+
+```bash
+# 1. Clone repository
+git clone https://github.com/rabianikwan/fwb-docs.git
+cd fwb-docs
+```
+
+```r
+# 2. Buka R atau RStudio, pastikan working directory sudah benar
+setwd("path/to/fwb-docs")
+
+# 3. Instalasi semua dependensi
+install.packages(c(
+  "naniar",
+  "missForest",
+  "survival",
+  "survminer",
+  "rms",
+  "gtsummary",
+  "gt",
+  "tibble",
+  "Hmisc",
+  "dplyr",
+  "timeROC",
+  "dcurves",
+  "tidyr",
+  "scales"
+))
+
+# 4. Jalankan pipeline utama
+source("Source.R")
+```
+
+> **Catatan:** `set.seed(12091993)` ditetapkan sebelum imputasi dan sebelum validasi bootstrap untuk memastikan reprodusibilitas hasil.
+
+---
+
+## 7. Output yang Dihasilkan
+
+| # | Output | Tahap |
+|---|---|---|
+| 1 | Tabel MCAR + OOB Error (`gt`) | 3 |
+| 2 | Tabel hasil imputasi baris-baris missing (`gt`) | 3 |
+| 3 | Tabel karakteristik umum & khusus (`gtsummary`) | 5 |
+| 4 | Tabel median survival per variabel (KM) + log-rank p | 7–8 |
+| 5 | Kurva KM per variabel (`ggsurvplot`) | 7 |
+| 6 | Kurva KM overall dengan risk table | 8 |
+| 7 | Tabel uji Schoenfeld (`gt`) | 9 |
+| 8 | Plot Schoenfeld residuals (`ggcoxzph`) | 9 |
+| 9 | Tabel Cox regression (HR, 95% CI, p) | 9 |
+| 10 | Forest plot HR (`ggforest`) | 9 |
+| 11 | Plot kalibrasi bootstrap-corrected | 10a |
+| 12 | C-statistic apparent & bias-corrected | 10b |
+| 13 | AUC-IPCW pada t = median | 10c |
+| 14 | Plot DCA (model vs treat-all vs treat-none) | 10d |
+| 15 | Nomogram prediksi probabilitas individual FWB | 10e |
+| 16 | Tabel Model Performance Summary (`gt`) | 10 |
+
+---
+
+## 8. Referensi Metodologis
+
+- **Cox PH Regression & Schoenfeld Residuals:**  
+  Kim J, et al. (2019). *Korean J Anesthesiol*, 72(4), 296–306. https://doi.org/10.4097/kja.19183
+
+- **Nomogram Cox PH:**  
+  Iasonos A, et al. (2008). *J Clin Oncol*, 26(8), 1379–1387.  
+  Wan G, et al. (2017). *Ann Transl Med*, 5(8), 168. https://doi.org/10.21037/atm.2017.04.01
+
+- **EPV (Events Per Variable):**  
+  Peduzzi P, et al. (1995). *J Clin Epidemiol*, 48(12), 1503–1510.  
+  Vittinghoff E & McCulloch CE. (2007). *Am J Epidemiol*, 165(6), 710–718.
+
+- **Kausal inference dalam studi observasional:**  
+  Hernán MA. (2018). *Am J Epidemiol*, 187(8), 1768–1774.
+
+- **Decision Curve Analysis:**  
+  Sjoberg DD, et al. (2022). *JAMA Oncol*, 8(8), 1229–1230. *(dcurves)*
+
+- **timeROC (AUC-IPCW):**  
+  Blanche P, et al. (2013). *Stat Med*, 32(30), 5381–5397.
+
+- **missForest:**  
+  Stekhoven DJ & Bühlmann P. (2012). *Bioinformatics*, 28(1), 112–118.
+
+- **Little's MCAR Test:**  
+  Little RJA. (1988). *J Am Stat Assoc*, 83(404), 1198–1202.
+
+---
+
+<details>
+<summary><strong>Catatan Teknis Tambahan</strong></summary>
+
+- `conf.type = "log-log"` pada `survfit()` dipilih karena menghasilkan CI yang lebih stabil secara statistik di ekor distribusi dibanding default `"plain"` atau `"log"`.
+- *cumulative incidence function* (`fun = "event"`) digunakan pada semua kurva KM karena luaran penelitian adalah *waktu hingga event positif* (FWB tercapai), sehingga pembaca lebih mudah membaca probabilitas kumulatif event daripada probabilitas survival.
+- Threshold DCA dibatasi 0–0.5 (bukan 0–1) karena pada threshold > 0.5, strategi "treat none" secara konsisten mendominasi secara klinis, sehingga rentang tersebut tidak relevan untuk pengambilan keputusan.
+- Landmark time *t* untuk kalibrasi, DCA, dan nomogram ditetapkan pada **median survival** yang diperoleh dari `km.univariat`, bukan dari nilai arbitrer, untuk memastikan prediksi dilakukan pada titik waktu yang paling informatif secara klinik.
+
+</details>
+
+---
+
+*Dibuat untuk keperluan dokumentasi penelitian.*
