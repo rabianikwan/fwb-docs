@@ -280,7 +280,7 @@ ggsurvplot(
   break.time.by    = 4,
   risk.table       = TRUE,
   tables.height    = 0.2,
-  tables.theme     = theme_cleantable(),
+  tables.theme     = theme_bw(),
   risk.table.y.text.col = TRUE,
   risk.table.y.text     = TRUE
 )
@@ -321,7 +321,7 @@ ggsurvplot(
   break.time.by    = 4,
   risk.table       = TRUE,
   tables.height    = 0.2,
-  tables.theme     = theme_cleantable(),
+  tables.theme     = theme_bw(),
   risk.table.y.text.col = TRUE,
   risk.table.y.text     = TRUE
 )
@@ -361,7 +361,7 @@ ggsurvplot(
   break.time.by    = 4,
   risk.table       = TRUE,
   tables.height    = 0.2,
-  tables.theme     = theme_cleantable(),
+  tables.theme     = theme_bw(),
   risk.table.y.text.col = TRUE,
   risk.table.y.text     = TRUE
 )
@@ -404,7 +404,6 @@ add_ncensor <- function(tbl) {
     modify_header(ncensor ~ "**Censoring**")
 }
 
-# Rebuild semua tabel
 tbl_overall2 <- tbl_survfit(
   km.univariat,
   probs        = 0.5,
@@ -547,7 +546,7 @@ tabel_cox <- tbl_regression(
   modify_caption("**Analisis Cox Regression**")
 
 tabel_cox
-
+summary(cox_m1)
 ggforest(
   cox_m1,
   data       = data,
@@ -776,6 +775,8 @@ at.surv <- c(.01, .05, seq(.1, .9, by = .1), .95, .99, .999)
 
 surv_median <- function(x) sv_median(median, lp = x)
 
+coef(model)
+
 nomogram_cox <- nomogram(
   model,
   fun      = list(surv_median),
@@ -801,9 +802,10 @@ plot(
   xfrac              = 0.38,
   label.every        = 1,
   tcl                = -0.3,
+  font = 0.8,
   ia.space           = 0.75,
-  points.label       = "Points",
-  total.points.label = "Total Points"
+  points.label       = "Skor",
+  total.points.label = "Jumlah Total Skor"
 )
 
 mtext(
@@ -811,7 +813,7 @@ mtext(
   side  = 3,
   outer = TRUE,
   line  = 1.5,
-  cex   = 0.95,
+  cex   = 1.5,
   font  = 2
 )
 
