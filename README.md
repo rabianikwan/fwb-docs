@@ -15,7 +15,7 @@
 6.  [Cara Menjalankan](#6-cara-menjalankan)
 7.  [Output yang Dihasilkan](#7-output-yang-dihasilkan)
 8.  [Referensi Metodologis](#8-referensi-metodologis)
-9.  [Referensi Pemanfaatan Praktis Model dalam Keperawatan](#9-Referensi Pemanfaatan Praktis model dalam Bidang Keperawatan)
+9.  [Referensi Pemanfaatan Praktis Model dalam Keperawatan](#9-referensi-pemanfaatan-praktis-model-dalam-bidang-keperawatan)
 
 ------------------------------------------------------------------------
 
