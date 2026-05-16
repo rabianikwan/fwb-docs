@@ -15,6 +15,7 @@
 6.  [Cara Menjalankan](#6-cara-menjalankan)
 7.  [Output yang Dihasilkan](#7-output-yang-dihasilkan)
 8.  [Referensi Metodologis](#8-referensi-metodologis)
+9.  [Referensi Pemanfaatan Praktis Model dalam Keperawatan](#9-Referensi Pemanfaatan Praktis model dalam Bidang Keperawatan)
 
 ------------------------------------------------------------------------
 
@@ -387,7 +388,18 @@ source("Source.R")
 - Wan G, et al. (2017). *Ann Transl Med*, 5(8), 168. <https://doi.org/10.21037/atm.2017.04.01>
 
 ------------------------------------------------------------------------
+## 9. Referensi Pemanfaatan Praktis model dalam Bidang Keperawatan
 
+### Pemanfaatan praktis terhadap risiko dekubitus pasien stroke
+Haiyan T, Quanzhen Z, Tingting L, Qing F, Yulei X, Zewei L, Mijuan Z, Bo H. Development and validation of a nomogram for pressure injury risk prediction in stroke patients: a retrospective cohort study. Front Neurol. 2025 Sep 9;16:1593707. doi: 10.3389/fneur.2025.1593707. PMID: 40994717; PMCID: PMC12456027.
+
+### Pemanfaatan praktis terhadap pasien hemodialisis 
+Cao Y, Fang T, Guo J, Hu X and Yang J (2025) Analysis of prognostic prediction and nursing intervention value in PD patients based on nomogram model. Front. Med. 12:1645631. doi: 10.3389/fmed.2025.1645631
+
+### Readmisi Setelah Tindakan Katerisasi Jantung Hingga 30 Hari
+Xu, W., Tu, H., Xiong, X., Peng, Y., & Cheng, T. (2022). Predicting the Risk of Unplanned Readmission at 30 Days After PCI: Development and Validation of a New Predictive Nomogram. Clinical Interventions in Aging, 17, 1013–1023. https://doi.org/10.2147/CIA.S369885. 
+
+dan lain lainnya. 
 <details>
 
 <summary><strong>Catatan Teknis Tambahan</strong></summary>
