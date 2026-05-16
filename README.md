@@ -23,7 +23,7 @@
 Penelitian ini menganalisis **waktu pencapaian *full weight-bearing*** (FWB) sebagai *event of interest* pada pasien dewasa penderita fraktur ekstremitas bawah. Analisis survival digunakan karena sebagian pasien belum mencapai FWB pada akhir periode observasi (data tersensor). Model Cox Proportional Hazards dibangun untuk mengestimasi pengaruh simultan empat prediktor klinis terhadap kecepatan pemulihan FWB, dilengkapi nomogram sebagai alat prediksi probabilistik individual.
 
 **Pertanyaan Penelitian:**
-Apakah usia, mekanisme trauma, lokasi fraktur, dan tipe fiksasi berpengaruh terhadap waktu pencapaian FWB pada pasien fraktur ekstremitas bawah di RSUD I.A. Moeis Samarinda?
+Apakah usia, mekanisme trauma, lokasi fraktur, dan tipe fiksasi berpengaruh terhadap waktu pencapaian FWB pada pasien fraktur ekstremitas bawah?
 
 ------------------------------------------------------------------------
 
