@@ -56,7 +56,7 @@ Apakah usia, mekanisme trauma, lokasi fraktur, dan tipe fiksasi berpengaruh terh
 
 ## 4. Alur Analisis
 
-Pipeline analisis terbagi menjadi sepuluh tahap berurutan, semuanya terdapat dalam `analysis.R`.
+Pipeline analisis terbagi menjadi sepuluh tahap berurutan, semuanya terdapat dalam `main.R`.
 
 ------------------------------------------------------------------------
 
@@ -85,7 +85,7 @@ copy_data <- missForest(
 
 **Justifikasi metode:** - Data diasumsikan *Missing at Random* (MAR) berdasarkan p-value uji MCAR (p > 0.05 → gagal tolak H₀ MCAR, sehingga asumsi MAR valid sebagai kasus konservatif).
 - Jenis Kelamin dieksklusi dari matriks imputasi karena tidak relevan sebagai prediktor imputasi `Mekanisme.Trauma`.
-- Akurasi imputasi dievaluasi menggunakan **PFC** (*Proportion of Falsely Classified*) untuk variabel kategorik dan **NRMSE** untuk variabel kontinu (konversi dari MSE OOB).
+- Akurasi imputasi dievaluasi menggunakan **PFC** (*Proportion of Falsely Classified*) melaui *OOB error*
 
 ------------------------------------------------------------------------
 
@@ -135,11 +135,11 @@ Objek `Surv` menjadi respons untuk seluruh model KM dan Cox di tahap berikutnya.
 
 ------------------------------------------------------------------------
 
-### Tahap 7 — Analisis Kaplan-Meier per Variabel
+### Tahap 7 — Analisis Kaplan-Meier tiap Variabel Kategorik
 
 Untuk setiap variabel independen kategorik (Mekanisme Trauma, Lokasi Fraktur, Tipe Fiksasi):
 
-1.  **`survfit()`** — estimasi KM dengan `conf.type = "log-log"` (lebih stabil untuk CI di ekor distribusi).
+1.  **`survfit()`** — estimasi KM dengan `conf.type = "log-log"`
 2.  **`survdiff()`** — uji log-rank antar strata.
 3.  **`tbl_survfit()`** — tabel median survival dengan 95% CI.
 4.  **`ggsurvplot()`** — kurva KM kumulatif (`fun = "event"`), lengkap dengan risk table, median line, dan p-value log-rank.
@@ -148,7 +148,7 @@ Kurva menggunakan `fun = "event"` (bukan default `fun = "surv"`) untuk menampilk
 
 ------------------------------------------------------------------------
 
-### Tahap 8 — Analisis Survival Univariat (Overall)
+### Tahap 8 — Analisis Survival Waktu Pencapaian FWB 
 
 Kurva KM keseluruhan (`~ 1`) dihitung untuk mendapatkan **median survival global** (digunakan sebagai landmark time *t* pada kalibrasi, DCA, dan nomogram).
 
@@ -215,17 +215,16 @@ validasi <- validate(model, method = "boot", B = 500)
 C = (Dxy + 1) / 2
 ```
 
-Dilaporkan: C apparent, C bias-corrected, dan 95% bootstrap CI.
+Dilaporkan: C apparent, C bias-corrected.
 
-#### 10c. Diskriminasi Berbasis Waktu (AUC-IPCW)
+#### 10c. Diskriminasi Berbasis Waktu (*AUC-time dependent*)
 
 ``` r
 tauc <- timeROC(T = data$Time, delta = data$Status,
                 marker = lp, cause = 1,
                 weighting = "marginal", times = median, iid = FALSE)
 ```
-
-AUC-IPCW (*Inverse Probability of Censoring Weighting*) pada *t* = median survival memberikan estimasi diskriminasi yang mengakomodasi sensoring.
+metode AUC-IPCW (*Inverse Probability of Censoring Weighting*) pada *t* = median survival memberikan estimasi diskriminasi yang mengakomodasi sensoring.
 
 #### 10d. Decision Curve Analysis (DCA)
 
@@ -246,7 +245,7 @@ nomogram_cox <- nomogram(model,
   lp       = FALSE)
 ```
 
-Nomogram menerjemahkan skor prediktif model Cox menjadi **probabilitas individual** keterlambatan FWB pada waktu *t* = median survival. Digunakan sebagai alat bantu pendukung keputusan klinis.
+Nomogram menerjemahkan skor *linear prediktor* model Cox menjadi **probabilitas individual** keterlambatan FWB pada waktu *t* = median survival. Digunakan sebagai alat bantu pendukung keputusan klinis / pemanfaatan praktis.
 
 ------------------------------------------------------------------------
 
