@@ -1,25 +1,19 @@
----
 
-editor_options: 
-  markdown: 
-    wrap: 72
----
 
 # Analisis Faktor Yang Berpengaruh Terhadap Waktu Pencapaian *Full Weight-Bearing* (FWB) Pasien Fraktur Ekstremitas Bawah Menggunakan *Cox Proportional Hazard* Multivariat
 
-
-> **Desain** — *Retrospective Cohort Study*
+> **Desain** — *Retrospective Cohort Study* 
 > **Metode Utama** — *Survival Analysis*
 
 ## Daftar Isi
 
-1.  [Deskripsi Project](#1-deskripsi-proyek)\
-2.  [Struktur Repository](#2-struktur-repository)\
-3.  [Variabel Penelitian](#3-variabel-penelitian)\
-4.  [Alur Analisis](#4-alur-analisis)\
-5.  [Dependensi R](#5-dependensi-r)\
-6.  [Cara Menjalankan](#6-cara-menjalankan)\
-7.  [Output yang Dihasilkan](#7-output-yang-dihasilkan)\
+1.  [Deskripsi Project](#1-deskripsi-proyek)
+2.  [Struktur Repository](#2-struktur-repository)
+3.  [Variabel Penelitian](#3-variabel-penelitian)
+4.  [Alur Analisis](#4-alur-analisis)
+5.  [Dependensi R](#5-dependensi-r)
+6.  [Cara Menjalankan](#6-cara-menjalankan)
+7.  [Output yang Dihasilkan](#7-output-yang-dihasilkan)
 8.  [Referensi Metodologis](#8-referensi-metodologis)
 
 ------------------------------------------------------------------------
@@ -28,7 +22,7 @@ editor_options:
 
 Penelitian ini menganalisis **waktu pencapaian *full weight-bearing*** (FWB) sebagai *event of interest* pada pasien dewasa penderita fraktur ekstremitas bawah. Analisis survival digunakan karena sebagian pasien belum mencapai FWB pada akhir periode observasi (data tersensor). Model Cox Proportional Hazards dibangun untuk mengestimasi pengaruh simultan empat prediktor klinis terhadap kecepatan pemulihan FWB, dilengkapi nomogram sebagai alat prediksi probabilistik individual.
 
-**Pertanyaan Penelitian:**\
+**Pertanyaan Penelitian:**
 Apakah usia, mekanisme trauma, lokasi fraktur, dan tipe fiksasi berpengaruh terhadap waktu pencapaian FWB pada pasien fraktur ekstremitas bawah di RSUD I.A. Moeis Samarinda?
 
 ------------------------------------------------------------------------
@@ -71,8 +65,8 @@ Pipeline analisis terbagi menjadi sepuluh tahap berurutan, semuanya terdapat dal
 data <- read.csv("data.csv")
 ```
 
-- Variabel kategorik dikonversi ke `factor`.\
-- Satuan waktu (`Time`) ditetapkan dalam **minggu** menggunakan `Hmisc::units()`.\
+- Variabel kategorik dikonversi ke `factor`.
+- Satuan waktu (`Time`) ditetapkan dalam **minggu** menggunakan `Hmisc::units()`.
 - Uji *Missing Completely at Random* (MCAR) dilakukan via `naniar::mcar_test()` sebelum imputasi.
 
 ------------------------------------------------------------------------
@@ -88,8 +82,8 @@ copy_data <- missForest(
 )
 ```
 
-**Justifikasi metode:** - Data diasumsikan *Missing at Random* (MAR) berdasarkan p-value uji MCAR (p \> 0.05 → gagal tolak H₀ MCAR, sehingga asumsi MAR valid sebagai kasus konservatif).\
-- Jenis Kelamin dieksklusi dari matriks imputasi karena tidak relevan sebagai prediktor imputasi `Mekanisme.Trauma`.\
+**Justifikasi metode:** - Data diasumsikan *Missing at Random* (MAR) berdasarkan p-value uji MCAR (p > 0.05 → gagal tolak H₀ MCAR, sehingga asumsi MAR valid sebagai kasus konservatif).
+- Jenis Kelamin dieksklusi dari matriks imputasi karena tidak relevan sebagai prediktor imputasi `Mekanisme.Trauma`.
 - Akurasi imputasi dievaluasi menggunakan **PFC** (*Proportion of Falsely Classified*) untuk variabel kategorik dan **NRMSE** untuk variabel kontinu (konversi dari MSE OOB).
 
 ------------------------------------------------------------------------
@@ -98,7 +92,7 @@ copy_data <- missForest(
 
 Dua tabel evaluasi dihasilkan:
 
-1.  **Tabel MCAR + OOB Error** — menampilkan statistik uji Little's MCAR, df, p-value, dan akurasi imputasi (PFC/NRMSE) dalam format `gt`.\
+1.  **Tabel MCAR + OOB Error** — menampilkan statistik uji Little's MCAR, df, p-value, dan akurasi imputasi (PFC/NRMSE) dalam format `gt`.
 2.  **Tabel Hasil Imputasi** — menampilkan baris-baris yang diimputasi dengan highlight kolom `Mekanisme.Trauma`.
 
 ------------------------------------------------------------------------
@@ -126,7 +120,7 @@ Dua tabel karakteristik dihasilkan menggunakan `gtsummary::tbl_summary()`:
 | Karakteristik Umum | Usia, Jenis Kelamin | Deskriptif demografi |
 | Karakteristik Khusus | Usia, Mekanisme Trauma, Tipe Fiksasi, Lokasi Fraktur dan Waktu Pencapaian FWB | Sesuai variabel penelitian |
 
-Statistik kontinu: mean \| median (IQR) \| [min–max]. Statistik kategorik: n (%).
+Statistik kontinu: mean | median (IQR) | [min–max]. Statistik kategorik: n (%).
 
 ------------------------------------------------------------------------
 
@@ -144,9 +138,9 @@ Objek `Surv` menjadi respons untuk seluruh model KM dan Cox di tahap berikutnya.
 
 Untuk setiap variabel independen kategorik (Mekanisme Trauma, Lokasi Fraktur, Tipe Fiksasi):
 
-1.  **`survfit()`** — estimasi KM dengan `conf.type = "log-log"` (lebih stabil untuk CI di ekor distribusi).\
-2.  **`survdiff()`** — uji log-rank antar strata.\
-3.  **`tbl_survfit()`** — tabel median survival dengan 95% CI.\
+1.  **`survfit()`** — estimasi KM dengan `conf.type = "log-log"` (lebih stabil untuk CI di ekor distribusi).
+2.  **`survdiff()`** — uji log-rank antar strata.
+3.  **`tbl_survfit()`** — tabel median survival dengan 95% CI.
 4.  **`ggsurvplot()`** — kurva KM kumulatif (`fun = "event"`), lengkap dengan risk table, median line, dan p-value log-rank.
 
 Kurva menggunakan `fun = "event"` (bukan default `fun = "surv"`) untuk menampilkan *cumulative incidence function* pencapaian FWB, lebih intuitif untuk luaran klinis positif.
@@ -178,11 +172,11 @@ cox_m1 <- coxph(
 uji_schoenfeld <- cox.zph(cox_m1)
 ```
 
-- Schoenfeld residuals diperiksa per variabel dan secara global.\
-- p \> 0.05 pada semua variabel → asumsi PH terpenuhi.\
+- Schoenfeld residuals diperiksa per variabel dan secara global.
+- p > 0.05 pada semua variabel → asumsi PH terpenuhi.
 - Plot `ggcoxzph()` ditampilkan untuk inspeksi visual tren residual terhadap waktu.
 
-**Output:** - Tabel HR + 95% CI + p-value via `tbl_regression(exponentiate = TRUE)`.\
+**Output:** - Tabel HR + 95% CI + p-value via `tbl_regression(exponentiate = TRUE)`.
 - Forest plot via `ggforest()`.
 
 ------------------------------------------------------------------------
@@ -333,7 +327,7 @@ source("Source.R")
 
 ## 7. Output yang Dihasilkan
 
-| \#  | Output                                               | Tahap |
+| #  | Output                                               | Tahap |
 |-----|------------------------------------------------------|-------|
 | 1   | Tabel MCAR + OOB Error (`gt`)                        | 3     |
 | 2   | Tabel hasil imputasi baris-baris missing (`gt`)      | 3     |
@@ -354,15 +348,18 @@ source("Source.R")
 
 ## 8. Referensi Metodologis
 
-###  **KM Curves, Cox PH Regression & Schoenfeld Residuals:**\
+### **KM Curves, Cox PH Regression & Schoenfeld Residuals:** 
+
 - Kim J, et al. (2019). *Korean J Anesthesiol*, 72(4), 296–306. <https://doi.org/10.4097/kja.19183>
 - Schober, P., & Vetter, T. R. (2018). Survival Analysis and Interpretation of Time-to-Event Data: The Tortoise and the Hare. Anesthesia & Analgesia, 127(3), 792–798. <https://doi.org/10.1213/ANE.0000000000003653>
 
-### *Internal Validation* 
-- Collins, G. S., Dhiman, P., Ma, J., Schlussel, M. M., Archer, L., van Calster, B., Harrell, F. E., Martin, G. P., Moons, K. G. M., van Smeden, M., Sperrin, M., Bullock, G. S., & Riley, R. D. (2024). Evaluation of clinical prediction models (part 1): from development to external validation. BMJ. <https://doi.org/10.1136/bmj-2023-074819> - **Reduksi bias via EPV (Events Per Variable):**\
+### *Internal Validation*
+
+- Collins, G. S., Dhiman, P., Ma, J., Schlussel, M. M., Archer, L., van Calster, B., Harrell, F. E., Martin, G. P., Moons, K. G. M., van Smeden, M., Sperrin, M., Bullock, G. S., & Riley, R. D. (2024). Evaluation of clinical prediction models (part 1): from development to external validation. BMJ. <https://doi.org/10.1136/bmj-2023-074819> - **Reduksi bias via EPV (Events Per Variable):**
 - Vittinghoff, E., & McCulloch, C. E. (2007). Relaxing the Rule of Ten Events per Variable in Logistic and Cox Regression. American Journal of Epidemiology, 165(6), 710–718. <https://doi.org/10.1093/aje/kwk052> - Ogundimu, E. O., Altman, D. G., & Collins, G. S. (2016). Adequate sample size for developing prediction models is not simply related to events per variable. Journal of Clinical Epidemiology, 76, 175–182. <https://doi.org/10.1016/j.jclinepi.2016.02.031>
 
-### **Kausal inference dalam studi observasional:**\
+### **Kausal inference dalam studi observasional:** 
+
 - Hernán, M. A. (2018). The C-Word: Scientific Euphemisms Do Not Improve Causal Inference From Observational Data. American Journal of Public Health, 108(5), 616–619. <https://doi.org/10.2105/AJPH.2018.304337>
 - Olarte Parra, C., Bertizzolo, L., Schroter, S., Dechartres, A., & Goetghebeur, E. (2021). Consistency of causal claims in observational studies: a review of papers published in a general medical journal. BMJ Open, 11(5), e043339. <https://doi.org/10.1136/bmjopen-2020-043339>
 
@@ -373,15 +370,19 @@ source("Source.R")
 - Sjoberg, D. D. (2021). dcurves: Decision Curve Analysis for Model Evaluation. Dalam CRAN: Contributed Packages. <https://doi.org/10.32614/CRAN.package.dcurves>
 
 ### **timeROC (AUC-IPCW):**
+
 - Blanche, P. (2012). timeROC: Time-Dependent ROC Curve and AUC for Censored Survival Data. <https://doi.org/10.32614/CRAN.package.timeROC>
 
-###  **missForest:**
+### **missForest:**
+
 - Stekhoven, D. J., & Bühlmann, P. (2012). Missforest-Non-parametric missing value imputation for mixed-type data. Bioinformatics, 28(1), 112–118. <https://doi.org/10.1093/bioinformatics/btr597>
 
-###  **Little's MCAR Test:**
--  Little, R. J. (2026). Missing Data Analysis. Annual Review of Clinical Psychology Annu. Rev. Clin. Psychol. 2024, 31, 57. <https://doi.org/10.1146/annurev-clinpsy-080822>
+### **Little's MCAR Test:**
 
-### **Nomogram Cox PH:**\
+- Little, R. J. (2026). Missing Data Analysis. Annual Review of Clinical Psychology Annu. Rev. Clin. Psychol. 2024, 31, 57. <https://doi.org/10.1146/annurev-clinpsy-080822>
+
+### **Nomogram Cox PH:** 
+
 - Zhang, Z., & Kattan, M. W. (2017). Drawing Nomograms with R: Applications to categorical outcome and survival data. Annals of Translational Medicine, 5(10). <https://doi.org/10.21037/atm.2017.04.01>
 - Wan G, et al. (2017). *Ann Transl Med*, 5(8), 168. <https://doi.org/10.21037/atm.2017.04.01>
 
@@ -393,7 +394,7 @@ source("Source.R")
 
 - `conf.type = "log-log"` pada `survfit()` dipilih karena menghasilkan CI yang lebih stabil secara statistik di ekor distribusi dibanding default `"plain"` atau `"log"`.
 - *cumulative incidence function* (`fun = "event"`) digunakan pada semua kurva KM karena luaran penelitian adalah *waktu hingga event positif* (FWB tercapai), sehingga pembaca lebih mudah membaca probabilitas kumulatif event daripada probabilitas survival.
-- Threshold DCA dibatasi 0–0.5 (bukan 0–1) karena pada threshold \> 0.5, strategi "treat none" secara konsisten mendominasi secara klinis, sehingga rentang tersebut tidak relevan untuk pengambilan keputusan.
+- Threshold DCA dibatasi 0–0.5 (bukan 0–1) karena pada threshold > 0.5, strategi "treat none" secara konsisten mendominasi secara klinis, sehingga rentang tersebut tidak relevan untuk pengambilan keputusan.
 - Landmark time *t* untuk kalibrasi, DCA, dan nomogram ditetapkan pada **median survival** yang diperoleh dari `km.univariat`, bukan dari nilai arbitrer, untuk memastikan prediksi dilakukan pada titik waktu yang paling informatif secara klinik.
 
 </details>
