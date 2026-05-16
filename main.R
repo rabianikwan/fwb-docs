@@ -15,13 +15,13 @@ library(dcurves)
 # 1. LOAD & PERSIAPAN AWAL DATA
 # ==============================================================================
 
-data <- read.csv("./csv/data.csv")
+data <- read.csv("data.csv")
 
 data$Mekanisme.Trauma = as.factor(data$Mekanisme.Trauma)
 data$Lokasi.Fraktur   = as.factor(data$Lokasi.Fraktur)
 data$Tipe.Fiksasi     = as.factor(data$Tipe.Fiksasi)
 data$Jenis.Kelamin = as.factor(data$Jenis.Kelamin)
-units(data$Time)      = "Week(s)"
+units(data$Time)      = "Weeks"
 
 mcar_result <- mcar_test(data)
 mcar_result
@@ -29,10 +29,8 @@ mcar_result
 # ==============================================================================
 # 2. IMPUTASI MISSING DATA (missForest)
 # ==============================================================================
-citation("naniar")
-citation("missForest")
 
-set.seed(123)
+set.seed(12091993)
 copy_data             <- data
 copy_data$Jenis.Kelamin <- NULL
 copy_data <- missForest(
@@ -272,7 +270,7 @@ ggsurvplot(
   surv.median.line = "hv",
   linetype         = "strata",
   palette          = c("black", "steelblue"),
-  xlab             = "Time (Week)",
+  xlab             = "Time (Weeks)",
   legend.title     = "Mekanisme Trauma",
   legend.labs      = c("Energi Rendah", "Energi Tinggi"),
   legend           = c(.2, .8),
@@ -313,7 +311,7 @@ ggsurvplot(
   surv.median.line = "hv",
   linetype         = "strata",
   palette          = c("black", "steelblue", "goldenrod3"),
-  xlab             = "Time (Week)",
+  xlab             = "Time (Weeks)",
   legend.title     = "Lokasi Fraktur",
   legend.labs      = c("Foot&Ankle", "Tibia-Fibula", "Femur"),
   legend           = c(.2, .8),
@@ -353,7 +351,7 @@ ggsurvplot(
   surv.median.line = "hv",
   linetype         = "strata",
   palette          = c("black", "steelblue"),
-  xlab             = "Time (Week)",
+  xlab             = "Time (Weeks)",
   legend.title     = "Tipe Fiksasi",
   legend.labs      = c("Pembidaian Eksternal", "Fiksasi Internal / Eksternal"),
   legend           = c(.2, .8),
@@ -466,7 +464,7 @@ ggsurvplot(
   legend           = c(.2, .8),
   legend.title     = "Variabel Dependen",
   legend.labs      =  "Waktu Pencapaian FWB",
-  xlab             = "Time (Week)",
+  xlab             = "Time (Weeks)",
   risk.table       = TRUE,
   tables.height    = 0.2,
   tables.theme     = theme_classic(),
@@ -514,7 +512,7 @@ uji_schoenfeld$table |>
     locations = cells_body(rows = Variable == "GLOBAL")
   ) |>
   tab_footnote(
-    footnote  = "p > 0.05 mengindikasikan tidak ada pelanggaran asumsi *proportional hazards*",
+    footnote  = "p > 0.05 mengindikasikan tidak ada pelanggaran asumsi *proportional hazards*.",
     locations = cells_column_labels(columns = p)
   ) |>
   fmt_number(columns = c(chisq, p), decimals = 3)
@@ -525,7 +523,6 @@ ggcoxzph(
   point.size  = 1.5,
   point.shape = 19,
   point.alpha = 1,
-  caption     = "Test Schoenfeld",
   ggtheme     = theme_bw()
 )
 
@@ -583,7 +580,7 @@ print(model)
 
 
 # 10a. Kalibrasi
-set.seed(300322)
+set.seed(12091993)
 kalibrasi <- calibrate(
   fit    = model,
   method = "boot",
@@ -595,7 +592,7 @@ kalibrasi
 
 
 # 10b. Validasi (Diskriminasi Global)
-set.seed(300322)
+set.seed(12091993)
 validasi <- validate(
   fit    = model,
   method = "boot",
@@ -606,30 +603,11 @@ validasi
 
 
 # --- Plot Kalibrasi ---
-par(
-  bg     = "white",
-  family = "sans",
-  mar    = c(5, 5, 4, 2),
-  mgp    = c(3, 0.8, 0),
-  las    = 1
-)
-
-plot(
-  kalibrasi,
-  xlab      = paste0("Predicted ", round(median, 1), "-Week Survival Probability"),
-  ylab      = paste0("Observed ", round(median, 1), "-Week Survival Fraction"),
-  main      = paste0("Calibration Plot (t = ", round(median, 1), " Weeks)"),
-  lwd       = 2,
-  col       = c("black", "#2171B5"),
-  subtitles = TRUE,
-  cex.axis  = 0.85,
-  cex.lab   = 0.95,
-  font.main = 2,
-  cex.main  = 1.0
-)
+plot(kalibrasi)
 
 grid(nx = NULL, ny = NULL, col = "gray88", lty = 1, lwd = 0.7)
 
+plot(kalibrasi)
 plot(
   kalibrasi,
   lwd       = 2,
@@ -650,18 +628,26 @@ legend(
 )
 
 
-#err      <- abs(kalibrasi[, "calibrated.corrected"] - kalibrasi[, "pred"])
-#mean_err <- round(mean(err), 4)
-#q90_err  <- round(quantile(err, 0.9), 4)
+output  <- capture.output(print(kalibrasi))
+output
+baris   <- output[grep("Mean \\|error\\|", output)]
 
-#error = kalibrasi$calibrated.corrected
-#mtext(
-#  text = paste0(
-#    "Mean |error| = ", round(mean_err, 3),
-#    "   |   0.9 Quantile = ", round(q90_err, 3)
-#  ),
-#  side = 1, line = 4, cex = 0.78, col = "gray30"
-#)
+mae     <- as.numeric(sub(".*Mean \\|error\\|:(\\S+)\\s.*", "\\1", baris))
+q90_err <- as.numeric(sub(".*0\\.9 Quantile of \\|error\\|:(\\S+).*", "\\1", baris))
+
+mae     <- round(mae, 4)
+q90_err <- round(q90_err, 4)
+
+cat("MAE  :", mae, "\n")
+cat("E90  :", q90_err, "\n")
+
+mtext(
+  text = paste0(
+    "Mean |error| = ", round(mean_err, 3),
+    "   |   0.9 Quantile = ", round(q90_err, 3)
+  ),
+  side = 1, line = 4, cex = 0.78, col = "gray30"
+)
 
 dxy_row     <- validasi["Dxy", ]
 c_apparent  <- round((dxy_row["index.orig"]      + 1) / 2, 3)
@@ -691,13 +677,13 @@ tauc <- timeROC(
 
 auc_ipcw <- round(tauc$AUC["t=22"] * 100, 2)
 
-auc_ipcw
+
 # 10d. Decision Curve Analysis (DCA)
 # Referensi: 
 citation("dcurves")
 
 sv_median           <- Survival(model)
-prediksi_survival   <- survest(model, newdata = data, times = median)$surv
+prediksi_survival   <- survest(model, newdata = data, times = 22)$surv
 data$probabilitas_prediksi <- 1 - prediksi_survival
 
 
