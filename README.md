@@ -5,12 +5,11 @@ editor_options:
     wrap: 72
 ---
 
-# *Survival Analysis* Waktu Pencapaian *Full Weight-Bearing* (FWB) Terhadap Pasien Fraktur Ekstremitas Bawah
+# Analisis Faktor Yang Berpengaruh Terhadap Waktu Pencapaian *Full Weight-Bearing* (FWB) Pasien Fraktur Ekstremitas Bawah Menggunakan *Cox Proportional Hazard* Multivariat
 
-> **Lokasi Data** — RSUD I.A. Moeis Samarinda\
+
 > **Desain** — *Retrospective Cohort Study*
-
-## \> **Metode Utama** — *Survival Analysis*
+> **Metode Utama** — *Survival Analysis*
 
 ## Daftar Isi
 
