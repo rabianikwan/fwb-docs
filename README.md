@@ -32,7 +32,6 @@ Apakah usia, mekanisme trauma, lokasi fraktur, dan tipe fiksasi berpengaruh terh
 
 ```
 .
-├── data.csv                    # Dataset mentah (variabel klinis pasien)
 ├── Source.R                    # Skrip utama — seluruh pipeline analisis
 └── README.md                   # Dokumentasi proyek (file ini)
 ```
@@ -295,9 +294,9 @@ install.packages(c(
 | `Hmisc` | Label variabel, `Surv` support |
 | `timeROC` | AUC-IPCW berbasis waktu |
 | `dcurves` | Decision curve analysis |
-| `dplyr` / `tidyr` / `tibble` | Manipulasi data |
+| `dplyr` / `tidyr` / `tibble` | Transoformasi / Labeling data |
 
-**Versi R yang direkomendasikan:** R ≥ 4.3.0
+
 
 ---
 
@@ -355,40 +354,45 @@ source("Source.R")
 | 10 | Forest plot HR (`ggforest`) | 9 |
 | 11 | Plot kalibrasi bootstrap-corrected | 10a |
 | 12 | C-statistic apparent & bias-corrected | 10b |
-| 13 | AUC-IPCW pada t = median | 10c |
+| 13 | AUC-time dependent (IPCW) pada t = median | 10c |
 | 14 | Plot DCA (model vs treat-all vs treat-none) | 10d |
-| 15 | Nomogram prediksi probabilitas individual FWB | 10e |
+| 15 | Nomogram visualisasi probabilitas individual FWB | 10e |
 | 16 | Tabel Model Performance Summary (`gt`) | 10 |
-
----
+````
 
 ## 8. Referensi Metodologis
 
-- **Cox PH Regression & Schoenfeld Residuals:**  
-  Kim J, et al. (2019). *Korean J Anesthesiol*, 72(4), 296–306. https://doi.org/10.4097/kja.19183
+- **KM Curves, Cox PH Regression & Schoenfeld Residuals:**  
+- Kim J, et al. (2019). *Korean J Anesthesiol*, 72(4), 296–306. https://doi.org/10.4097/kja.19183
+- Schober, P., & Vetter, T. R. (2018). Survival Analysis and Interpretation of Time-to-Event Data: The Tortoise and the Hare. Anesthesia & Analgesia, 127(3), 792–798. https://doi.org/10.1213/ANE.0000000000003653
 
-- **Nomogram Cox PH:**  
-  Iasonos A, et al. (2008). *J Clin Oncol*, 26(8), 1379–1387.  
-  Wan G, et al. (2017). *Ann Transl Med*, 5(8), 168. https://doi.org/10.21037/atm.2017.04.01
-
-- **EPV (Events Per Variable):**  
-  Peduzzi P, et al. (1995). *J Clin Epidemiol*, 48(12), 1503–1510.  
-  Vittinghoff E & McCulloch CE. (2007). *Am J Epidemiol*, 165(6), 710–718.
+*Internal Validation*
+- Collins, G. S., Dhiman, P., Ma, J., Schlussel, M. M., Archer, L., van Calster, B., Harrell, F. E., Martin, G. P., Moons, K. G. M., van Smeden, M., Sperrin, M., Bullock, G. S., & Riley, R. D. (2024). Evaluation of clinical prediction models (part 1): from development to external validation. BMJ. https://doi.org/10.1136/bmj-2023-074819
+- **Reduksi bias via EPV (Events Per Variable):**  
+- Vittinghoff, E., & McCulloch, C. E. (2007). Relaxing the Rule of Ten Events per Variable in Logistic and Cox Regression. American Journal of Epidemiology, 165(6), 710–718. https://doi.org/10.1093/aje/kwk052
+- Ogundimu, E. O., Altman, D. G., & Collins, G. S. (2016). Adequate sample size for developing prediction models is not simply related to events per variable. Journal of Clinical Epidemiology, 76, 175–182. https://doi.org/10.1016/j.jclinepi.2016.02.031
 
 - **Kausal inference dalam studi observasional:**  
-  Hernán MA. (2018). *Am J Epidemiol*, 187(8), 1768–1774.
+- Hernán, M. A. (2018). The C-Word: Scientific Euphemisms Do Not Improve Causal Inference From Observational Data. American Journal of Public Health, 108(5), 616–619. https://doi.org/10.2105/AJPH.2018.304337
+- Olarte Parra, C., Bertizzolo, L., Schroter, S., Dechartres, A., & Goetghebeur, E. (2021). Consistency of causal claims in observational studies: a review of papers published in a general medical journal. BMJ Open, 11(5), e043339. https://doi.org/10.1136/bmjopen-2020-043339
 
 - **Decision Curve Analysis:**  
-  Sjoberg DD, et al. (2022). *JAMA Oncol*, 8(8), 1229–1230. *(dcurves)*
+- Vickers, A. J., & Holland, F. (2021). Decision curve analysis to evaluate the clinical benefit of prediction models. Spine Journal, 21(10), 1643–1648. https://doi.org/10.1016/j.spinee.2021.02.024
+- Vickers, A. J., & Elkin, E. B. (2006). Decision curve analysis: A novel method for evaluating prediction models. Medical Decision Making, 26(6), 565–574. https://doi.org/10.1177/0272989X06295361
+- Sjoberg, D. D. (2021). dcurves: Decision Curve Analysis for Model Evaluation. Dalam CRAN: Contributed Packages. https://doi.org/10.32614/CRAN.package.dcurves
 
 - **timeROC (AUC-IPCW):**  
-  Blanche P, et al. (2013). *Stat Med*, 32(30), 5381–5397.
+- Blanche, P. (2012). timeROC: Time-Dependent ROC Curve and AUC for Censored Survival Data. https://doi.org/10.32614/CRAN.package.timeROC
 
 - **missForest:**  
-  Stekhoven DJ & Bühlmann P. (2012). *Bioinformatics*, 28(1), 112–118.
+- Stekhoven, D. J., & Bühlmann, P. (2012). Missforest-Non-parametric missing value imputation for mixed-type data. Bioinformatics, 28(1), 112–118. https://doi.org/10.1093/bioinformatics/btr597
 
 - **Little's MCAR Test:**  
-  Little RJA. (1988). *J Am Stat Assoc*, 83(404), 1198–1202.
+- Little, R. J. (2026). Missing Data Analysis. Annual Review of Clinical Psychology Annu. Rev. Clin. Psychol. 2024, 31, 57. https://doi.org/10.1146/annurev-clinpsy-080822
+
+- **Nomogram Cox PH:**  
+-  Zhang, Z., & Kattan, M. W. (2017). Drawing Nomograms with R: Applications to categorical outcome and survival data. Annals of Translational Medicine, 5(10). https://doi.org/10.21037/atm.2017.04.01
+-  Wan G, et al. (2017). *Ann Transl Med*, 5(8), 168. https://doi.org/10.21037/atm.2017.04.01
 
 ---
 
@@ -404,4 +408,4 @@ source("Source.R")
 
 ---
 
-*Dibuat untuk keperluan dokumentasi penelitian.*
+*Dibuat untuk keperluan lampiran penelitian.*
