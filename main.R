@@ -590,6 +590,20 @@ kalibrasi <- calibrate(
 )
 kalibrasi
 
+output  <- capture.output(print(kalibrasi))
+output
+baris   <- output[grep("Mean \\|error\\|", output)]
+
+mean_err     <- as.numeric(sub(".*Mean \\|error\\|:(\\S+)\\s.*", "\\1", baris))
+q90_err <- as.numeric(sub(".*0\\.9 Quantile of \\|error\\|:(\\S+).*", "\\1", baris))
+
+mean_err     <- round(mae, 4)
+q90_err <- round(q90_err, 4)
+
+cat("MAE  :", mae, "\n")
+cat("E90  :", q90_err, "\n")
+
+
 
 # 10b. Validasi (Diskriminasi Global)
 set.seed(12091993)
@@ -602,64 +616,12 @@ validasi <- validate(
 validasi
 
 
-# --- Plot Kalibrasi ---
-plot(kalibrasi)
-
-grid(nx = NULL, ny = NULL, col = "gray88", lty = 1, lwd = 0.7)
-
-plot(kalibrasi)
-plot(
-  kalibrasi,
-  lwd       = 2,
-  col       = c("black", "#2171B5"),
-  subtitles = FALSE,
-  add       = TRUE
-)
-
-legend(
-  "bottomright",
-  legend  = c("Apparent", "Bias-corrected", "Ideal", "95% Bootstrap CI"),
-  lty     = c(1, 1, 2, 1),
-  lwd     = c(2, 2, 1, 1),
-  col     = c("black", "#2171B5", "black", "gray70"),
-  bty     = "n",
-  cex     = 0.82,
-  seg.len = 1.8
-)
-
-
-output  <- capture.output(print(kalibrasi))
-output
-baris   <- output[grep("Mean \\|error\\|", output)]
-
-mae     <- as.numeric(sub(".*Mean \\|error\\|:(\\S+)\\s.*", "\\1", baris))
-q90_err <- as.numeric(sub(".*0\\.9 Quantile of \\|error\\|:(\\S+).*", "\\1", baris))
-
-mae     <- round(mae, 4)
-q90_err <- round(q90_err, 4)
-
-cat("MAE  :", mae, "\n")
-cat("E90  :", q90_err, "\n")
-
-mtext(
-  text = paste0(
-    "Mean |error| = ", round(mean_err, 3),
-    "   |   0.9 Quantile = ", round(q90_err, 3)
-  ),
-  side = 1, line = 4, cex = 0.78, col = "gray30"
-)
-
 dxy_row     <- validasi["Dxy", ]
+dxy_row
 c_apparent  <- round((dxy_row["index.orig"]      + 1) / 2, 3)
 c_corrected <- round((dxy_row["index.corrected"] + 1) / 2, 3)
 c_lower     <- round((dxy_row["Lower"]           + 1) / 2, 3)
 c_upper     <- round((dxy_row["Upper"]           + 1) / 2, 3)
-
-cat("mean_err   :", mean_err, "\n")
-cat("q90_err    :", q90_err,  "\n")
-cat("c_apparent :", c_apparent, "\n")
-cat("c_corrected:", c_corrected, "(", c_lower, "-", c_upper, ")\n")
-
 
 # 10c. Diskriminasi (AUC-IPCW)
 citation("timeROC")
@@ -677,6 +639,40 @@ tauc <- timeROC(
 
 auc_ipcw <- round(tauc$AUC["t=22"] * 100, 2)
 
+
+
+# --- Plot Kalibrasi ---
+plot(kalibrasi,
+     xlab = "Prediksi Probabilitas Keterlambatan FWB (22 Minggu)",
+     ylab = "Proporsi Observasi Keterlambatan FWB (22 Minggu)",)
+
+legend(
+  "bottomright",
+  legend  = c("Apparent", "Bias-corrected", "Ideal", "95% Bootstrap CI"),
+  lty     = c(1, 1, 2, 1),
+  lwd     = c(2, 2, 1, 1),
+  col     = c("black", "#2171B5", "black", "gray70"),
+  bty     = "n",
+  cex     = 0.82,
+  seg.len = 1.8
+)
+
+grid(nx = NULL, ny = NULL, col = "gray88", lty = 1, lwd = 0.7)
+
+metric_text <- c(
+  paste0("AUC (t=22 weeks) = ", auc_ipcw, "%"),
+  paste0("C-Statistic Apparent = ", c_apparent),
+  paste0("C-Statistic Bias-Corrected = ", c_corrected)
+)
+
+legend(
+  "topleft",
+  legend  = metric_text,
+  bty     = "o",          # kotak border
+  cex     = 0.82,
+  text.col = c("black", "black", "black"),   # biru untuk bias-corrected, sesuai warna garis
+  bg      = "white"
+)
 
 # 10d. Decision Curve Analysis (DCA)
 # Referensi: 
@@ -701,7 +697,7 @@ dca(survival_object ~ probabilitas_prediksi,
     label = list(probabilitas_prediksi = "Model Cox")) %>%
   plot(smooth = TRUE)
 
-dca_tbl <- dca_survival$dca |>
+ dca_tbl <- dca_survival$dca |>
   filter(
     threshold %in% seq(0.05, 0.5, by = 0.01),
     variable  %in% c("all", "probabilitas_prediksi")
