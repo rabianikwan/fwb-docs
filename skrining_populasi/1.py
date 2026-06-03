@@ -117,10 +117,10 @@ def mapping_semua_pasien(data, filter1: list=[''], filter2: list=['']):
             data = ({
                         "id": key_id,
                         "pasien_id": id_pasien_generated,
-                        # "no_rm": record.get("no_rm"),
-                        # "nama": nama,
+                        #"no_rm": record.get("no_rm"),
+                        #"nama": nama,
 						"tgl_kunjungan": record.get("tgl_kunjungan"),
-						"sex": jenis_kelamin,
+						#"sex": jenis_kelamin,
 						"umur": record.get('umur'),
 						"erm": {
 						"keluhan": keluhan.replace("\r\n", ", "),

@@ -75,13 +75,12 @@ def retstruktur_kunjungan_dan_filter_umur(data_input):
         # FITUR 1 : MEMPERKIRAKAN DIAGNOSA UTAMA BERDASARKAN FREKUENSI DIAGNOSA KUNJUNGAN
         diagnosa_kunjungan = [kunjungan.get("erm", {}).get("diagnosa", "").lower() for kunjungan in p_data["kunjungan"]]
 
-        
-        
         # FITUR 2 : MENGKATEGORIKAN LOKASI ANATOMI BERDASARKAN DIAGNOSA UTAMA
         filter = [
             "femur", 
             "femoral",
             "tibia", 
+            "fibula",  
             "ankle", 
             "calcaneus", 
             "talus",
@@ -123,6 +122,7 @@ def retstruktur_kunjungan_dan_filter_umur(data_input):
         pwb_search = any("pwb" in tindakan for tindakan in tindakan_kunjungan)
         fwb_search = any("fwb" in tindakan for tindakan in tindakan_kunjungan)
         wbat_search = any("wbat" in tindakan for tindakan in tindakan_kunjungan)
+        wb_search = any("weight bearing" in tindakan or "wb" in tindakan for tindakan in tindakan_kunjungan)
         
         protokol_wb = ""
         if fwb_search:
@@ -131,6 +131,8 @@ def retstruktur_kunjungan_dan_filter_umur(data_input):
             protokol_wb = "PWB"
         elif nwb_search:
             protokol_wb = "NWB"
+        elif wb_search:
+            protokol_wb = "WB"
         elif wbat_search:
             protokol_wb = "WBAT"
                     
@@ -141,6 +143,9 @@ def retstruktur_kunjungan_dan_filter_umur(data_input):
         umur_dict = p_data.get("umur", {}).get("tahun", 0)
         umur_tahun = umur_dict.get("tahun", 0) if isinstance(umur_dict, dict) else umur_dict
         p_data["umur_tahun"] = umur_tahun
+        
+        # JUMLAH KUNJUNGAN
+        p_data["jumlah_kunjungan"] = len(p_data["kunjungan"])
         
         # FINALISASI SKRINING UNTUK DICEK MANUAL
         daftar_final.append(p_data)
