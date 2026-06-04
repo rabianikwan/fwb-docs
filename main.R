@@ -15,7 +15,7 @@ library(dcurves)
 # 1. LOAD & PERSIAPAN AWAL DATA
 # ==============================================================================
 
-data <- read.csv("data.csv")
+data <- read.csv("data.csv", sep = ";")
 
 data$Mekanisme.Trauma = as.factor(data$Mekanisme.Trauma)
 data$Lokasi.Fraktur   = as.factor(data$Lokasi.Fraktur)
@@ -243,7 +243,11 @@ survival_object <- Surv(data$Time, data$Status)
 # 7. ANALISIS KAPLAN-MEIER PER VARIABEL
 # ==============================================================================
 
-# 7a. Mekanisme Trauma
+# 7a. Usia
+logrank.usia = survdiff(survival_object ~ Usia, data = data)
+logrank.usia
+
+# 7b. Mekanisme Trauma
 km.mekanismetrauma     <- survfit(survival_object ~ Mekanisme.Trauma, data = data, conf.type = "log-log")
 logrank.mekanismetrauma <- survdiff(survival_object ~ Mekanisme.Trauma, data = data)
 
@@ -270,7 +274,7 @@ ggsurvplot(
   surv.median.line = "hv",
   linetype         = "strata",
   palette          = c("black", "steelblue"),
-  xlab             = "Time (Weeks)",
+  xlab             = "Time (Week)",
   legend.title     = "Mekanisme Trauma",
   legend.labs      = c("Energi Rendah", "Energi Tinggi"),
   legend           = c(.2, .8),
@@ -283,7 +287,7 @@ ggsurvplot(
 )
 
 
-# 7b. Lokasi Fraktur
+# 7c. Lokasi Fraktur
 km.lokasifraktur     <- survfit(survival_object ~ Lokasi.Fraktur, data = data, conf.type = "log-log")
 logrank.lokasifraktur <- survdiff(survival_object ~ Lokasi.Fraktur, data = data)
 
@@ -311,7 +315,7 @@ ggsurvplot(
   surv.median.line = "hv",
   linetype         = "strata",
   palette          = c("black", "steelblue", "goldenrod3"),
-  xlab             = "Time (Weeks)",
+  xlab             = "Time (Week)",
   legend.title     = "Lokasi Fraktur",
   legend.labs      = c("Foot&Ankle", "Tibia-Fibula", "Femur"),
   legend           = c(.2, .8),
@@ -324,7 +328,7 @@ ggsurvplot(
 )
 
 
-# 7c. Tipe Fiksasi
+# 7d. Tipe Fiksasi
 km.tipefiksasi     <- survfit(survival_object ~ Tipe.Fiksasi, data = data, conf.type = "log-log")
 logrank.tipefiksasi <- survdiff(survival_object ~ Tipe.Fiksasi, data = data)
 
@@ -351,7 +355,7 @@ ggsurvplot(
   surv.median.line = "hv",
   linetype         = "strata",
   palette          = c("black", "steelblue"),
-  xlab             = "Time (Weeks)",
+  xlab             = "Time (Week)",
   legend.title     = "Tipe Fiksasi",
   legend.labs      = c("Pembidaian Eksternal", "Fiksasi Internal / Eksternal"),
   legend           = c(.2, .8),
@@ -370,7 +374,6 @@ ggsurvplot(
 
 km.univariat <- survfit(survival_object ~ 1, data = data, conf.type = "log-log")
 
-# Update add_ncensor dengan relocate
 fill_stratum_stats <- function(tbl, km_obj) {
   surv_tbl <- summary(km_obj)$table
   labels   <- sub(".*=", "", rownames(surv_tbl))
@@ -401,7 +404,24 @@ add_ncensor <- function(tbl) {
     modify_header(ncensor ~ "**Censoring**")
 }
 
-# Rebuild semua tabel
+
+add_n_pct <- function(tbl, total_n) {
+  tbl |>
+    modify_fmt_fun(
+      N ~ function(x) ifelse(
+        is.na(x), NA_character_,
+        paste0(x, " (", formatC(x / total_n * 100, digits = 1, format = "f"), "%)")
+      )
+    ) |>
+    modify_header(N ~ "**N (%)**")
+}
+
+
+total_N    <- nrow(data)
+pval_usia  <- pchisq(logrank.usia$chisq,
+                     df         = length(logrank.usia$n) - 1,
+                     lower.tail = FALSE)
+
 tbl_overall2 <- tbl_survfit(
   km.univariat,
   probs        = 0.5,
@@ -410,7 +430,28 @@ tbl_overall2 <- tbl_survfit(
 ) |>
   add_n() |> add_nevent() |>
   modify_header(N ~ "**N**", nevent ~ "**Events**") |>
-  add_ncensor()
+  add_ncensor() |>
+  add_n_pct(total_N)
+
+tbl_usia3 <- tbl_survfit(
+  km.univariat,
+  probs        = 0.5,
+  label_header = "**Median Survival (95% CI)**",
+  statistic    = "{estimate} ({conf.low}, {conf.high})"
+) |>
+  add_n() |> add_nevent() |>
+  modify_header(N ~ "**N**", nevent ~ "**Events**") |>
+  add_ncensor() |>
+  modify_table_body(~ .x |>
+                      mutate(
+                        label   = if_else(row_type == "label", "Usia (tahun)", label),
+                        p.value = if_else(row_type == "label", pval_usia, NA_real_)
+                      )
+  ) |>
+  modify_column_unhide(columns = p.value) |>
+  modify_header(p.value ~ "**p-value**") |>
+  modify_fmt_fun(p.value ~ \(x) style_pvalue(x, digits = 3)) |>
+  add_n_pct(total_N)
 
 tbl_mekanisme3 <- tbl_survfit(
   km.mekanismetrauma,
@@ -421,7 +462,9 @@ tbl_mekanisme3 <- tbl_survfit(
   add_n() |> add_nevent() |> add_p() |>
   modify_header(N ~ "**N**", nevent ~ "**Events**") |>
   fill_stratum_stats(km.mekanismetrauma) |>
-  add_ncensor()
+  add_ncensor() |>
+  add_n_pct(total_N)
+
 tbl_lokasi3 <- tbl_survfit(
   km.lokasifraktur,
   probs        = 0.5,
@@ -431,7 +474,8 @@ tbl_lokasi3 <- tbl_survfit(
   add_n() |> add_nevent() |> add_p() |>
   modify_header(N ~ "**N**", nevent ~ "**Events**") |>
   fill_stratum_stats(km.lokasifraktur) |>
-  add_ncensor()
+  add_ncensor() |>
+  add_n_pct(total_N)
 
 tbl_fiksasi3 <- tbl_survfit(
   km.tipefiksasi,
@@ -442,11 +486,12 @@ tbl_fiksasi3 <- tbl_survfit(
   add_n() |> add_nevent() |> add_p() |>
   modify_header(N ~ "**N**", nevent ~ "**Events**") |>
   fill_stratum_stats(km.tipefiksasi) |>
-  add_ncensor()
+  add_ncensor() |>
+  add_n_pct(total_N)
 
 tbl_stack(
-  list(tbl_overall2, tbl_mekanisme3, tbl_lokasi3, tbl_fiksasi3),
-  group_header = c("Waktu Pencapaian FWB", "Mekanisme Trauma", "Lokasi Fraktur", "Tipe Fiksasi")
+  list(tbl_overall2, tbl_usia3, tbl_mekanisme3, tbl_lokasi3, tbl_fiksasi3),
+  group_header = c("Waktu Pencapaian FWB", "Usia", "Mekanisme Trauma", "Lokasi Fraktur", "Tipe Fiksasi")
 ) |>
   bold_labels() |>
   modify_header(label = "Variabel Independen / Dependen") |>
@@ -470,6 +515,13 @@ ggsurvplot(
   tables.theme     = theme_classic(),
   risk.table.y.text = FALSE
 )
+
+median <- round(summary(km.univariat)$table["median"], digits = 0)
+km.univariat
+median
+
+n_risk_at_median <- summary(km.univariat, times = median)$n.risk
+cat("Number at risk at median:", n_risk_at_median, "\n")
 
 # ==============================================================================
 # 9. COX REGRESSION MULTIVARIAT
@@ -535,7 +587,7 @@ tabel_cox <- tbl_regression(
   cox_m1,
   label        = label_vars,
   exponentiate = TRUE,
-  pvalue_fun   = ~style_pvalue(.x, digits = 3)
+  pvalue_fun   = ~style_pvalue(.x, digits = 2)
 ) |>
   bold_p() |>
   modify_header(label = "**Variabel Independen**") |>
@@ -564,11 +616,10 @@ ggforest(
 # 10. MODEL Cox PH (rms) — KALIBRASI, VALIDASI, DISKRIMINASI, DCA, NOMOGRAM
 # ==============================================================================
 citation("rms")
-median <- round(summary(km.univariat)$table["median"], digits = 0)
-median
+
 
 model <- cph(
-  survival_object ~ Lokasi.Fraktur + Mekanisme.Trauma + Tipe.Fiksasi + Usia,
+  survival_object ~ Lokasi.Fraktur + Mekanisme.Trauma + Usia + Tipe.Fiksasi,
   data     = data,
   x        = TRUE,
   y        = TRUE,
@@ -591,19 +642,14 @@ kalibrasi <- calibrate(
 kalibrasi
 
 output  <- capture.output(print(kalibrasi))
-output
 baris   <- output[grep("Mean \\|error\\|", output)]
-
 mean_err     <- as.numeric(sub(".*Mean \\|error\\|:(\\S+)\\s.*", "\\1", baris))
 q90_err <- as.numeric(sub(".*0\\.9 Quantile of \\|error\\|:(\\S+).*", "\\1", baris))
+mean_err     <- round(mean_err, 3)
+q90_err <- round(q90_err, 3)
 
-mean_err     <- round(mae, 4)
-q90_err <- round(q90_err, 4)
-
-cat("MAE  :", mae, "\n")
-cat("E90  :", q90_err, "\n")
-
-
+cat("MAE  :", mean_err, "\n")
+cat("|Err| 0.9 Quantile  :", q90_err, "\n")
 
 # 10b. Validasi (Diskriminasi Global)
 set.seed(12091993)
@@ -616,12 +662,13 @@ validasi <- validate(
 validasi
 
 
-dxy_row     <- validasi["Dxy", ]
+dxy_row     = validasi["Dxy", ]
 dxy_row
-c_apparent  <- round((dxy_row["index.orig"]      + 1) / 2, 3)
-c_corrected <- round((dxy_row["index.corrected"] + 1) / 2, 3)
-c_lower     <- round((dxy_row["Lower"]           + 1) / 2, 3)
-c_upper     <- round((dxy_row["Upper"]           + 1) / 2, 3)
+c_apparent  =  round((dxy_row["index.orig"]      + 1) / 2, 3)
+c_corrected = round((dxy_row["index.corrected"] + 1) / 2, 3)
+c_corrected
+c_lower     = round((dxy_row["Lower"]           + 1) / 2, 3)
+c_upper     = round((dxy_row["Upper"]           + 1) / 2, 3)
 
 # 10c. Diskriminasi (AUC-IPCW)
 citation("timeROC")
@@ -632,19 +679,21 @@ tauc <- timeROC(
   delta     = data$Status,
   marker    = lp,
   cause     = 1,
-  weighting = "marginal",
+  weighting = "cox",
   times     = median,
   iid       = FALSE
 )
-
+tauc
 auc_ipcw <- round(tauc$AUC["t=22"] * 100, 2)
 
-
-
-# --- Plot Kalibrasi ---
+# ==============================================================================
+# PLOT KALIBRASI & DISKRIMINASI
+# ==============================================================================
 plot(kalibrasi,
      xlab = "Prediksi Probabilitas Keterlambatan FWB (22 Minggu)",
-     ylab = "Proporsi Observasi Keterlambatan FWB (22 Minggu)",)
+     ylab = "Proporsi Observasi Keterlambatan FWB (22 Minggu)",
+     subtitles = FALSE)
+
 
 legend(
   "bottomright",
@@ -660,46 +709,41 @@ legend(
 grid(nx = NULL, ny = NULL, col = "gray88", lty = 1, lwd = 0.7)
 
 metric_text <- c(
-  paste0("AUC (t=22 weeks) = ", auc_ipcw, "%"),
+  paste0("---Kalibrasi---"),
+  paste0("Mean |Error| = ", mean_err),
+  paste0("0.9 Quantile of |error| = ", q90_err),
+  paste0("---Diskriminasi---"),  
+  paste0("AUC-IPCW = ", auc_ipcw, "%"),
   paste0("C-Statistic Apparent = ", c_apparent),
   paste0("C-Statistic Bias-Corrected = ", c_corrected)
 )
 
 legend(
   "topleft",
-  legend  = metric_text,
-  bty     = "o",          # kotak border
-  cex     = 0.82,
-  text.col = c("black", "black", "black"),   # biru untuk bias-corrected, sesuai warna garis
-  bg      = "white"
+  legend  = metric_text, 
+  cex = 0.9
 )
 
 # 10d. Decision Curve Analysis (DCA)
-# Referensi: 
+
 citation("dcurves")
 
-sv_median           <- Survival(model)
-prediksi_survival   <- survest(model, newdata = data, times = 22)$surv
+prediksi_survival   <- survest(model, newdata = data, times = median)$surv
 data$probabilitas_prediksi <- 1 - prediksi_survival
 
 
 dca_survival <- dca(
   formula    = survival_object ~ probabilitas_prediksi,
   data       = data,
-  time       = 22,
-  thresholds = seq(0, 0.5, by = 0.01)
+  time       = median,
+  thresholds = seq(0, 0.6, by = 0.01)
 )
 
-dca(survival_object ~ probabilitas_prediksi, 
-    data,
-    time = median,
-    thresholds = seq(0, 0.5, by = 0.01),
-    label = list(probabilitas_prediksi = "Model Cox")) %>%
-  plot(smooth = TRUE)
 
- dca_tbl <- dca_survival$dca |>
+
+dca_tbl <- dca_survival$dca |>
   filter(
-    threshold %in% seq(0.05, 0.5, by = 0.01),
+    threshold %in% seq(0.05, 0.6, by = 0.01),
     variable  %in% c("all", "probabilitas_prediksi")
   ) |>
   select(label, threshold, net_benefit) |>
@@ -712,10 +756,25 @@ dca(survival_object ~ probabilitas_prediksi,
   ) |>
   select(Metric, Value)
 
-# --- Tabel Keseluruhan ---
+print(dca_tbl, n = 38)
+
+# ==============================================================================
+# PLOT DCA
+# ==============================================================================
+dca(survival_object ~ probabilitas_prediksi, 
+    data,
+    time = median,
+    thresholds = seq(0, 0.6, by = 0.01),
+    label = list(probabilitas_prediksi = "Model Cox")) %>%
+  plot(smooth = TRUE)
+
+
+
+# ==============================================================================
+# TABEL KALIBRASI, DISKRIMINASI, DAN DCA
+# ==============================================================================
 combined <- tribble(
   ~Section,          ~Metric,                                  ~Value,
-  "Discrimination",  "AUC-IPCW (t = 22 weeks)",               paste0(auc_ipcw, "%"),
   "Discrimination",  "C-statistic (Apparent)",                 as.character(c_apparent),
   "Discrimination",  "C-statistic (Bias-Corrected, 95% CI)",   paste0(c_corrected, " (", c_lower, "–", c_upper, ")"),
   "Calibration",     "Mean Absolute Error",                    as.character(round(mean_err, 4)),
@@ -754,17 +813,66 @@ combined |>
   cols_width(Metric ~ px(320), Value ~ px(250))
 
 
-# 10e. Nomogram Referensi : https://doi.org/10.21037/atm.2017.04.01
-at.surv <- c(.01, .05, seq(.1, .9, by = .1), .95, .99, .999)
+# ==============================================================================
+# 11. Fungsi Survival (t=22 Minggu) dan Visualisasi
+# ==============================================================================
+base_haz = basehaz(model, centered = TRUE)
+print(base_haz$time)
+print(base_haz$hazard)
 
+
+nearest_t_median = abs(base_haz$time - median)
+nearest_t_median
+h0_t_median <- base_haz$hazard[which.min(nearest_t_median)]
+h0_t_median
+
+lp_mean = model$center
+lp_mean
+
+
+surv_prob <- exp(-h0_t_median * exp(lp))
+range(lp)
+range(surv_prob)
+
+print(lp)
+print(model$center)
+print(lp + model$center)
+print(surv_prob)
+
+data_lp_surv <- data.frame(
+  lp = lp,
+  surv_prob = surv_prob
+)
+
+data_lp_surv %>%
+  gt() %>%
+  tab_header(
+    title = "Linear Prediktor dan Prediksi Keterlambatan FWB ≥ 22 Minggu",
+    subtitle = "Data Observasi Terhadap Keseluruhan Responden Penelitian"
+  ) %>%
+  cols_label(
+    lp = "Linear Predictor",
+    surv_prob = "Survival Probability"
+  ) %>%
+  fmt_number(
+    columns = c(lp, surv_prob),
+    decimals = 4
+  ) %>%
+  tab_options(
+    table.font.size = 12
+  )
+
+
+at.surv <- c(.001, 0.01, .05, seq(.1, .9, by = .1), .93, .99, .999)
+sv_median = Survival(model)
 surv_median <- function(x) sv_median(median, lp = x)
 
 nomogram_cox <- nomogram(
   model,
   fun      = list(surv_median),
   fun.at   = list(at.surv),
-  funlabel = c(paste0("Probabilitas Keterlambatan FWB pada t = ", round(median, 1), " Minggu")),
-  lp       = FALSE
+  funlabel = c(paste0("Probabilitas Keterlambatan FWB pada t ≥ ", round(median, 1), " Minggu")),
+  lp       = TRUE
 )
 
 par(
@@ -785,12 +893,12 @@ plot(
   label.every        = 1,
   tcl                = -0.3,
   ia.space           = 0.75,
-  points.label       = "Points",
-  total.points.label = "Total Points"
+  points.label       = "Skor",
+  total.points.label = "Total Skor"
 )
 
 mtext(
-  text  = "Estimasi Probabilistik Individu Terhadap Luaran FWB Pada 22 Minggu ",
+  text  = "Estimasi Probabilistik Individu Terhadap Luaran FWB",
   side  = 3,
   outer = TRUE,
   line  = 1.5,
@@ -799,3 +907,54 @@ mtext(
 )
 
 box("figure", col = "gray60", lwd = 0.8)
+
+# ── Helper: Total Skor & Probabilitas dari Nomogram Cox ──────────────────────
+get_nomo_prob <- function(usia,
+                          lokasi_fraktur,
+                          mekanisme_trauma,
+                          tipe_fiksasi,
+                          nomogram_obj = nomogram_cox) {
+  
+  lf   <- nomogram_obj[["Lokasi Fraktur"]]
+  mt   <- nomogram_obj[["Mekanisme Trauma"]]
+  tf   <- nomogram_obj[["Tipe Fiksasi"]]
+  us   <- nomogram_obj[["Usia (tahun)"]]
+  prob <- nomogram_obj[[grep("Probabilitas", names(nomogram_obj))]]
+  
+ 
+  skor_usia <- approx(x = us[[1]], y = us$points, xout = usia)$y
+  
+  skor_lf <- lf$points[lf[[1]] == lokasi_fraktur]
+  skor_mt <- mt$points[mt[[1]] == mekanisme_trauma]
+  skor_tf <- tf$points[tf[[1]] == tipe_fiksasi]
+  
+  if (is.na(skor_usia))     stop("Usia di luar rentang nomogram: ",   usia)
+  if (!length(skor_lf))     stop("Lokasi fraktur tidak dikenali: ",   lokasi_fraktur)
+  if (!length(skor_mt))     stop("Mekanisme trauma tidak dikenali: ", mekanisme_trauma)
+  if (!length(skor_tf))     stop("Tipe fiksasi tidak dikenali: ",     tipe_fiksasi)
+  
+  total_skor   <- skor_usia + skor_lf + skor_mt + skor_tf
+  
+  probabilitas <- approx(x = prob$x, y = prob$x.real, xout = total_skor)$y
+  
+  data.frame(
+    Usia             = usia,
+    Lokasi_Fraktur   = lokasi_fraktur,
+    Mekanisme_Trauma = mekanisme_trauma,
+    Tipe_Fiksasi     = tipe_fiksasi,
+    Skor_Usia        = round(skor_usia, 2),
+    Skor_LF          = round(skor_lf,   2),
+    Skor_MT          = round(skor_mt,   2),
+    Skor_TF          = round(skor_tf,   2),
+    Total_Skor       = round(total_skor, 2),
+    Probabilitas     = round(probabilitas, 4)
+  )
+}
+
+get_nomo_prob(
+  usia             = 84,
+  lokasi_fraktur   = "Ankle&Foot",
+  mekanisme_trauma = "Energi Tinggi",
+  tipe_fiksasi     = "Fiksasi Konservatif"
+)
+
