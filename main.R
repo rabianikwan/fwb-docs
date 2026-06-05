@@ -15,7 +15,10 @@ library(dcurves)
 # 1. LOAD & PERSIAPAN AWAL DATA
 # ==============================================================================
 
-data <- read.csv("data.csv", sep = ";")
+# Hapus tanda '#' dibawah jika .csv menggunakan ";" sebagai tanda pemisah, bukan ","
+data <- read.csv("data.csv"
+                # , sep = ";"
+                )
 
 data$Mekanisme.Trauma = as.factor(data$Mekanisme.Trauma)
 data$Lokasi.Fraktur   = as.factor(data$Lokasi.Fraktur)
